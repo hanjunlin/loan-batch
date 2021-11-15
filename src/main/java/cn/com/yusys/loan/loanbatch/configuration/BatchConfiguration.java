@@ -8,21 +8,19 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.DefaultBatchConfigurer;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.*;
 import org.springframework.batch.core.listener.JobExecutionListenerSupport;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
-
-import javax.sql.DataSource;
 import java.io.File;
 
 /**
@@ -41,12 +39,12 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
     @Autowired
     public JobBuilderFactory jobBuilderFactory;
 
-    @Bean
-    public MyItemProcessor processor() {
+    @Bean(name = "processor")
+    public ItemProcessor processor() {
         return new MyItemProcessor();
     }
 
-    @Bean
+    @Bean(name = "writer")
     public ItemWriter<String> writer() {
         return new MyItemWriter();
     }
@@ -65,31 +63,27 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
         return reader;
     }
 
-    @Bean
-    public ItemReader<String> stringReader() {
-        return new MyItemReader();
+    @Bean(name = "stringReader")
+    @StepScope
+    public ItemReader<String> stringReader(@Value("#{jobParameters['date']}") String date) {
+        return new MyItemReader(date);
     }
 
-    @Override
-    public void setDataSource(DataSource dataSource) {
-        super.setDataSource(dataSource);
-    }
-
-    @Bean
-    public Step myStep() {
+    @Bean(name = "myStep")
+    public Step myStep(@Qualifier("stringReader") ItemReader reader, @Qualifier("processor") ItemProcessor processor, @Qualifier("writer") ItemWriter writer) {
         return stepBuilderFactory
                 .get("step1")
                 //这个chunk size是最后调用写入的时候，一次性写入多少条已处理的数据
                 .<String, String>chunk(10)
-                .reader(stringReader())
-                .processor(processor())
-                .writer(writer())
+                .reader(reader)
+                .processor(processor)
+                .writer(writer)
                 .build();
 
     }
 
     @Bean(name = "myJob")
-    public Job MyJob() {
+    public Job MyJob(@Qualifier("myStep") Step myStep) {
         log.info("生成--MyJob...");
         return jobBuilderFactory
                 .get("MyJOB")
@@ -102,7 +96,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                         }
                     }
                 })
-                .flow(myStep())
+                .flow(myStep)
                 .end()
                 .build();
     }

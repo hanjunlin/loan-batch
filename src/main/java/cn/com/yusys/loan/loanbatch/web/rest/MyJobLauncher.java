@@ -1,7 +1,6 @@
 package cn.com.yusys.loan.loanbatch.web.rest;
 
 import org.springframework.batch.core.*;
-import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.NoSuchJobException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
@@ -36,13 +35,13 @@ public class MyJobLauncher {
     @PostMapping("/myjob")
     public String myjob() throws NoSuchJobException, JobInstanceAlreadyCompleteException, JobExecutionAlreadyRunningException, JobParametersInvalidException, JobRestartException {
         JobExecution jobExecution = jobLauncher.run(myJob, createJobParams());
-        if(!jobExecution.getExitStatus().equals(ExitStatus.COMPLETED)) {
+        if (!jobExecution.getExitStatus().equals(ExitStatus.COMPLETED)) {
             throw new RuntimeException(String.format("%s Job execution failed.", myJob.getName()));
         }
         return myJob.getName();
     }
 
-    private JobParameters createJobParams(){
+    private JobParameters createJobParams() {
         return new JobParametersBuilder().addDate("date", new Date()).toJobParameters();
     }
 

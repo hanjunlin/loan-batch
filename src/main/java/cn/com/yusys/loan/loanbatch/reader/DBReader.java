@@ -17,9 +17,8 @@ public class DBReader extends MyBatisPagingItemReader<SBrBch> {
         SBrBchMapper mapper = SpringUtil.getBean(SBrBchMapper.class);
 
         setSqlSessionFactory(sqlSessionFactory);
-        setQueryId("com.sl.entity."+name+"selectList");
+        setQueryId("com.sl.entity." + name + "selectList");
         setPageSize(100);
     }
-
 
 }
